@@ -457,6 +457,10 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
         const attachSessionSpecificListeners = async (sid: string) => {
           console.log('[ClaudeCodeSession] Attaching session-specific listeners for', sid);
 
+          // Clean up existing listeners first
+          unlistenRefs.current.forEach((u) => u());
+          unlistenRefs.current = [];
+
           const specificOutputUnlisten = await listen<string>(`claude-output:${sid}`, (evt) => {
             handleStreamMessage(evt.payload);
           });
@@ -471,8 +475,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
             processComplete(evt.payload);
           });
 
-          // Replace existing unlisten refs with these new ones (after cleaning up)
-          unlistenRefs.current.forEach((u) => u());
           unlistenRefs.current = [specificOutputUnlisten, specificErrorUnlisten, specificCompleteUnlisten];
         };
 
@@ -495,6 +497,10 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
                   setExtractedSessionInfo({ sessionId: msg.session_id, projectId });
                 }
 
+                        // Clean up generic listeners before switching
+                unlistenRefs.current.forEach((u) => u());
+                unlistenRefs.current = [];
+                
                 // Switch to session-specific listeners
                 await attachSessionSpecificListeners(msg.session_id);
               }
@@ -510,11 +516,53 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
             // Don't process if component unmounted
             if (!isMountedRef.current) return;
             
+            console.log('[DEBUG] Raw payload received:', payload);
+            
             // Store raw JSONL
             setRawJsonlOutput((prev) => [...prev, payload]);
 
             const message = JSON.parse(payload) as ClaudeStreamMessage;
-            setMessages((prev) => [...prev, message]);
+            
+            console.log('[DEBUG] Parsed message:', {
+              type: message.type,
+              content: message.message?.content || message.content,
+              timestamp: message.timestamp,
+              hasId: !!message.id
+            });
+            
+            // Deduplicate messages based on content and type - strict deduplication
+            setMessages((prev) => {
+              const content = message.message?.content || message.content;
+              const resultText = message.type === 'result' ? message.result : '';
+              
+              // Create content fingerprint for deduplication
+              const contentFingerprint = JSON.stringify({
+                type: message.type,
+                content: content,
+                result: resultText,
+                subtype: message.subtype
+              });
+              
+              // Strict deduplication - same content regardless of session
+              const isDuplicate = prev.some(existingMsg => {
+                const existingContent = existingMsg.message?.content || existingMsg.content;
+                const existingResult = existingMsg.type === 'result' ? existingMsg.result : '';
+                
+                return existingMsg.type === message.type && 
+                       JSON.stringify({
+                         type: existingMsg.type,
+                         content: existingContent,
+                         result: existingResult,
+                         subtype: existingMsg.subtype
+                       }) === contentFingerprint;
+              });
+              
+              if (isDuplicate) {
+                return prev;
+              }
+              
+              return [...prev, message];
+            });
           } catch (err) {
             console.error('Failed to parse message:', err, payload);
           }
@@ -592,15 +640,10 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
         };
         setMessages(prev => [...prev, userMessage]);
 
-        // Execute the appropriate command
-        if (effectiveSession && !isFirstPrompt) {
-          console.log('[ClaudeCodeSession] Resuming session:', effectiveSession.id);
-          await api.resumeClaudeCode(projectPath, effectiveSession.id, prompt, model);
-        } else {
-          console.log('[ClaudeCodeSession] Starting new session');
-          setIsFirstPrompt(false);
-          await api.executeClaudeCode(projectPath, prompt, model);
-        }
+        // Execute the appropriate command - always use new session to avoid ID conflicts
+        console.log('[ClaudeCodeSession] Starting new session to avoid duplicates');
+        setIsFirstPrompt(false);
+        await api.executeClaudeCode(projectPath, prompt, model);
       }
     } catch (err) {
       console.error("Failed to send prompt:", err);
