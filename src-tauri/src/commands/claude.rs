@@ -243,6 +243,8 @@ fn create_command_with_env(program: &str) -> Command {
             || key == "NVM_BIN"
             || key == "HOMEBREW_PREFIX"
             || key == "HOMEBREW_CELLAR"
+            || key == "ANTHROPIC_API_KEY"
+            || key == "ANTHROPIC_API_BASE"
         {
             log::debug!("Inheriting env var: {}={}", key, value);
             tokio_cmd.env(&key, &value);
@@ -264,6 +266,35 @@ fn create_command_with_env(program: &str) -> Command {
     tokio_cmd
 }
 
+/// Loads custom environment variables from ~/.claude/settings.json
+fn load_settings_env() -> Result<std::collections::HashMap<String, String>, String> {
+    let claude_dir = get_claude_dir().map_err(|e| e.to_string())?;
+    let settings_path = claude_dir.join("settings.json");
+    
+    if !settings_path.exists() {
+        return Ok(std::collections::HashMap::new());
+    }
+    
+    let content = fs::read_to_string(&settings_path)
+        .map_err(|e| format!("Failed to read settings file: {}", e))?;
+    
+    let data: serde_json::Value = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse settings JSON: {}", e))?;
+    
+    let mut env_vars = std::collections::HashMap::new();
+    
+    // Extract environment variables from settings
+    if let Some(env_obj) = data.get("env").and_then(|v| v.as_object()) {
+        for (key, value) in env_obj {
+            if let Some(value_str) = value.as_str() {
+                env_vars.insert(key.clone(), value_str.to_string());
+            }
+        }
+    }
+    
+    Ok(env_vars)
+}
+
 /// Creates a system binary command with the given arguments
 fn create_system_command(
     claude_path: &str,
@@ -271,6 +302,14 @@ fn create_system_command(
     project_path: &str,
 ) -> Command {
     let mut cmd = create_command_with_env(claude_path);
+    
+    // Load custom environment variables from settings
+    if let Ok(settings_env) = load_settings_env() {
+        for (key, value) in settings_env {
+            log::debug!("Applying custom env var from settings: {}={}", key, value);
+            cmd.env(key, value);
+        }
+    }
     
     // Add all arguments
     for arg in args {

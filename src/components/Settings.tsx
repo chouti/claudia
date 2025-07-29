@@ -374,8 +374,9 @@ export const Settings: React.FC<SettingsProps> = ({
       ) : (
         <div className="flex-1 overflow-y-auto p-4">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid grid-cols-8 w-full">
+            <TabsList className="grid grid-cols-9 w-full">
               <TabsTrigger value="general">General</TabsTrigger>
+              <TabsTrigger value="appearance">Appearance</TabsTrigger>
               <TabsTrigger value="permissions">Permissions</TabsTrigger>
               <TabsTrigger value="environment">Environment</TabsTrigger>
               <TabsTrigger value="advanced">Advanced</TabsTrigger>
@@ -392,6 +393,93 @@ export const Settings: React.FC<SettingsProps> = ({
                   <h3 className="text-base font-semibold mb-4">General Settings</h3>
                   
                   <div className="space-y-4">
+                    {/* Theme moved to Appearance tab */}
+                    
+                    {/* Include Co-authored By */}
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5 flex-1">
+                        <Label htmlFor="coauthored">Include "Co-authored by Claude"</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Add Claude attribution to git commits and pull requests
+                        </p>
+                      </div>
+                      <Switch
+                        id="coauthored"
+                        checked={settings?.includeCoAuthoredBy !== false}
+                        onCheckedChange={(checked) => updateSetting("includeCoAuthoredBy", checked)}
+                      />
+                    </div>
+                    
+                    {/* Verbose Output */}
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5 flex-1">
+                        <Label htmlFor="verbose">Verbose Output</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Show full bash and command outputs
+                        </p>
+                      </div>
+                      <Switch
+                        id="verbose"
+                        checked={settings?.verbose === true}
+                        onCheckedChange={(checked) => updateSetting("verbose", checked)}
+                      />
+                    </div>
+                    
+                    {/* Cleanup Period */}
+                    <div className="space-y-2">
+                      <Label htmlFor="cleanup">Chat Transcript Retention (days)</Label>
+                      <Input
+                        id="cleanup"
+                        type="number"
+                        min="1"
+                        placeholder="30"
+                        value={settings?.cleanupPeriodDays || ""}
+                        onChange={(e) => {
+                          const value = e.target.value ? parseInt(e.target.value) : undefined;
+                          updateSetting("cleanupPeriodDays", value);
+                        }}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        How long to retain chat transcripts locally (default: 30 days)
+                      </p>
+                    </div>
+                    
+                    {/* Claude Binary Path Selector */}
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="text-sm font-medium mb-2 block">Claude Code Installation</Label>
+                        <p className="text-xs text-muted-foreground mb-4">
+                          Select which Claude Code installation to use.
+                        </p>
+                      </div>
+                      <ClaudeVersionSelector
+                        selectedPath={currentBinaryPath}
+                        onSelect={handleClaudeInstallationSelect}
+                      />
+                      {binaryPathChanged && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400">
+                          ⚠️ Claude binary path has been changed. Remember to save your settings.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </TabsContent>
+
+            {/* Appearance Settings */}
+            <TabsContent value="appearance" className="space-y-6">
+              <Card className="p-6 space-y-6">
+                <div>
+                  <h3 className="text-base font-semibold mb-4">Appearance Settings</h3>
+                  <p className="text-sm text-muted-foreground mb-6">Customize the visual appearance of the interface</p>
+                </div>
+
+                {/* Theme Settings */}
+                <div className="space-y-6">
+                  <div>
+                    <h4 className="text-sm font-medium mb-3">Theme Settings</h4>
+                    
                     {/* Theme Selector */}
                     <div className="space-y-2">
                       <Label htmlFor="theme">Theme</Label>
@@ -540,73 +628,99 @@ export const Settings: React.FC<SettingsProps> = ({
                         </p>
                       </div>
                     )}
+                  </div>
+                </div>
+
+                {/* Font Family Settings */}
+                <div className="space-y-6">
+                  <div>
+                    <h4 className="text-sm font-medium mb-3">Font Settings</h4>
                     
-                    {/* Include Co-authored By */}
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5 flex-1">
-                        <Label htmlFor="coauthored">Include "Co-authored by Claude"</Label>
-                        <p className="text-xs text-muted-foreground">
-                          Add Claude attribution to git commits and pull requests
-                        </p>
-                      </div>
-                      <Switch
-                        id="coauthored"
-                        checked={settings?.includeCoAuthoredBy !== false}
-                        onCheckedChange={(checked) => updateSetting("includeCoAuthoredBy", checked)}
-                      />
-                    </div>
-                    
-                    {/* Verbose Output */}
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5 flex-1">
-                        <Label htmlFor="verbose">Verbose Output</Label>
-                        <p className="text-xs text-muted-foreground">
-                          Show full bash and command outputs
-                        </p>
-                      </div>
-                      <Switch
-                        id="verbose"
-                        checked={settings?.verbose === true}
-                        onCheckedChange={(checked) => updateSetting("verbose", checked)}
-                      />
-                    </div>
-                    
-                    {/* Cleanup Period */}
+                    {/* Primary Font */}
                     <div className="space-y-2">
-                      <Label htmlFor="cleanup">Chat Transcript Retention (days)</Label>
+                      <label className="text-sm font-medium">Primary Font</label>
                       <Input
-                        id="cleanup"
-                        type="number"
-                        min="1"
-                        placeholder="30"
-                        value={settings?.cleanupPeriodDays || ""}
-                        onChange={(e) => {
-                          const value = e.target.value ? parseInt(e.target.value) : undefined;
-                          updateSetting("cleanupPeriodDays", value);
-                        }}
+                        id="primary-font"
+                        placeholder="Maple Mono NF CN, Inter, sans-serif"
+                        value={settings?.font?.primary || "Maple Mono NF CN, -apple-system, BlinkMacSystemFont"}
+                        onChange={(e) => updateSetting("font", { ...settings?.font, primary: e.target.value })}
+                        className="font-mono text-sm"
                       />
-                      <p className="text-xs text-muted-foreground">
-                        How long to retain chat transcripts locally (default: 30 days)
-                      </p>
+                      <p className="text-xs text-muted-foreground">Main font for text and UI elements</p>
                     </div>
-                    
-                    {/* Claude Binary Path Selector */}
-                    <div className="space-y-4">
-                      <div>
-                        <Label className="text-sm font-medium mb-2 block">Claude Code Installation</Label>
-                        <p className="text-xs text-muted-foreground mb-4">
-                          Select which Claude Code installation to use.
-                        </p>
-                      </div>
-                      <ClaudeVersionSelector
-                        selectedPath={currentBinaryPath}
-                        onSelect={handleClaudeInstallationSelect}
+
+                    {/* Monospace Font */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Monospace Font</label>
+                      <Input
+                        id="mono-font"
+                        placeholder="Maple Mono NF CN, SF Mono, Monaco, monospace"
+                        value={settings?.font?.mono || "Maple Mono NF CN, SF Mono, Monaco, monospace"}
+                        onChange={(e) => updateSetting("font", { ...settings?.font, mono: e.target.value })}
+                        className="font-mono text-sm"
                       />
-                      {binaryPathChanged && (
-                        <p className="text-xs text-amber-600 dark:text-amber-400">
-                          ⚠️ Claude binary path has been changed. Remember to save your settings.
-                        </p>
-                      )}
+                      <p className="text-xs text-muted-foreground">Font for code and monospace text</p>
+                    </div>
+
+                    {/* Font Size */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Base Font Size</label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="font-size"
+                          type="number"
+                          min="12"
+                          max="20"
+                          step="0.5"
+                          placeholder="14"
+                          value={settings?.font?.size || 14}
+                          onChange={(e) => updateSetting("font", { ...settings?.font, size: parseFloat(e.target.value) })}
+                          className="w-20"
+                        />
+                        <span className="text-sm text-muted-foreground">px</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Base font size for the interface (12-20px)</p>
+                    </div>
+
+                    {/* Font Preview */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Font Preview</label>
+                      <div className="p-4 border rounded-lg bg-muted/20">
+                        <div 
+                          className="mb-3"
+                          style={{ fontFamily: settings?.font?.primary || "Maple Mono NF CN" }}
+                        >
+                          <p className="text-base">This is how your primary font will look:</p>
+                          <p className="text-sm text-muted-foreground">The quick brown fox jumps over the lazy dog. 1234567890</p>
+                        </div>
+                        
+                        <div 
+                          className="border-t pt-3"
+                          style={{ fontFamily: settings?.font?.mono || "Maple Mono NF CN" }}
+                        >
+                          <p className="text-sm">Monospace font preview:</p>
+                          <pre className="text-sm text-muted-foreground">{`{
+  "example": "code block",
+  "fontFamily": "monospace",
+  "numbers": "1234567890"
+}`}</pre>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Reset to Default */}
+                    <div className="flex justify-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => updateSetting("font", {
+                          primary: "Maple Mono NF CN, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+                          mono: "Maple Mono NF CN, 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace",
+                          size: 14
+                        })}
+                      >
+                        Reset to Default
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -800,8 +914,10 @@ export const Settings: React.FC<SettingsProps> = ({
                       <strong>Common variables:</strong>
                     </p>
                     <ul className="text-xs text-muted-foreground space-y-1 ml-4">
-                      <li>• <code className="px-1 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400">CLAUDE_CODE_ENABLE_TELEMETRY</code> - Enable/disable telemetry (0 or 1)</li>
+                      <li>• <code className="px-1 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400">ANTHROPIC_API_KEY</code> - Custom API key for authentication</li>
+                      <li>• <code className="px-1 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400">ANTHROPIC_API_BASE</code> - Custom API endpoint URL</li>
                       <li>• <code className="px-1 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400">ANTHROPIC_MODEL</code> - Custom model name</li>
+                      <li>• <code className="px-1 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400">CLAUDE_CODE_ENABLE_TELEMETRY</code> - Enable/disable telemetry (0 or 1)</li>
                       <li>• <code className="px-1 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400">DISABLE_COST_WARNINGS</code> - Disable cost warnings (1)</li>
                     </ul>
                   </div>
