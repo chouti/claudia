@@ -81,7 +81,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [rawJsonlOutput, setRawJsonlOutput] = useState<string[]>([]);
   const [copyPopoverOpen, setCopyPopoverOpen] = useState(false);
-  const [isFirstPrompt, setIsFirstPrompt] = useState(!session);
   const [totalTokens, setTotalTokens] = useState(0);
   const [extractedSessionInfo, setExtractedSessionInfo] = useState<{ sessionId: string; projectId: string } | null>(null);
   const [claudeSessionId, setClaudeSessionId] = useState<string | null>(null);
@@ -278,8 +277,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
       setMessages(loadedMessages);
       setRawJsonlOutput(history.map(h => JSON.stringify(h)));
       
-      // After loading history, we're continuing a conversation
-      setIsFirstPrompt(false);
     } catch (err) {
       console.error("Failed to load session history:", err);
       setError("Failed to load session history");
@@ -642,7 +639,6 @@ export const ClaudeCodeSession: React.FC<ClaudeCodeSessionProps> = ({
 
         // Execute the appropriate command - always use new session to avoid ID conflicts
         console.log('[ClaudeCodeSession] Starting new session to avoid duplicates');
-        setIsFirstPrompt(false);
         await api.executeClaudeCode(projectPath, prompt, model);
       }
     } catch (err) {
